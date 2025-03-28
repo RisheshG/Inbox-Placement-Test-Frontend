@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import "./PreviousResults.css";
 
 const PreviousResults = () => {
   const [previousTests, setPreviousTests] = useState([]);
@@ -84,7 +85,7 @@ const PreviousResults = () => {
       <h2>Previous IPT Tests</h2>
       {fetchingPreviousTests && <p>Loading...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
-
+  
       {/* Pagination Controls */}
       <div style={{ marginBottom: "20px" }}>
         <button onClick={prevPage} disabled={currentPage === 1}>
@@ -100,7 +101,7 @@ const PreviousResults = () => {
           Next
         </button>
       </div>
-
+  
       {/* Display Paginated Results */}
       {currentItems.length > 0 && (
         <div>
@@ -108,13 +109,14 @@ const PreviousResults = () => {
             <div key={index} style={{ border: "1px solid #ccc", padding: "15px", borderRadius: "5px", marginBottom: "20px" }}>
               <h3>Test Code: {test.testCode}</h3>
               <p><strong>Sent From:</strong> {test.sendingEmail}</p>
-
-              {/* Results Table */}
+  
+              {/* Results Table with ESP Column */}
               <h4>Results</h4>
               <table border="1" cellPadding="10" cellSpacing="0">
                 <thead>
                   <tr>
                     <th>Email</th>
+                    <th>ESP</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -122,17 +124,35 @@ const PreviousResults = () => {
                   {test.results.map((result, idx) => (
                     <tr key={idx}>
                       <td>{result.email}</td>
-                      <td>{result.status}</td>
+                      <td>
+                        <span style={{
+                          padding: "3px 6px",
+                          borderRadius: "3px",
+                          backgroundColor: 
+                            result.esp === 'pro-gmail' ? '#e3f2fd' :
+                            result.esp === 'pro-outlook' ? '#e8f5e9' :
+                            '#fff8e1',
+                          color: '#000',
+                          fontWeight: 'bold'
+                        }}>
+                          {result.esp}
+                        </span>
+                      </td>
+                      <td>
+                        {result.status === "Inbox" && "✅ Inbox"}
+                        {result.status === "Spam" && "⚠️ Spam"}
+                        {result.status === "Not Found" && "❌ Not Found"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
+  
               {/* Display Analysis for Each Result */}
               {test.results.map((result, idx) => (
                 result.analysis && (
                   <div key={idx} style={{ marginTop: "20px" }}>
-                    <h4>Email Analysis for {result.email}</h4>
+                    <h4>Email Analysis for {result.email} <small>({result.esp})</small></h4>
                     <div style={{ border: "1px solid #ccc", padding: "15px", borderRadius: "5px" }}>
                       {/* Authentication */}
                       <h3>Authentication</h3>
