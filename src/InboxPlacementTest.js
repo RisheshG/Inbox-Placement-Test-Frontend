@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import "./InboxPlacementTest.css";
 
 const InboxPlacementTest = () => {
   const [testCode, setTestCode] = useState("");
@@ -16,8 +17,11 @@ const InboxPlacementTest = () => {
   const [analysisReady, setAnalysisReady] = useState(false);
 
   const recipients = `
-  tmm003937@gmail.com,
-  mta872679@gmail.com,
+  Patricia@emaildeliveryreport.com,
+  l.Patricia@emaildeliveryreport.net,
+  lindaPatricia@xemaildeliveryreport.com,
+  Linda@xemaildeliveryreport.com,
+  linda.patricia@xemaildeliveryreport.com,
   brijesh@xleadoutreach.com,
   mahendra@xleadsconsulting.com,
   lakhendra@xleadsconsulting.com,
@@ -26,11 +30,8 @@ const InboxPlacementTest = () => {
   houseisitter@gmail.com,
   malaikaarora983475@gmail.com,
   rheadutta096@gmail.com,
-  Patricia@emaildeliveryreport.com,
-  l.Patricia@emaildeliveryreport.net,
-  lindaPatricia@xemaildeliveryreport.com,
-  Linda@xemaildeliveryreport.com,
-  linda.patricia@xemaildeliveryreport.com
+  tmm003937@gmail.com,
+  mta872679@gmail.com
 `;
 
   useEffect(() => {
@@ -127,54 +128,71 @@ const InboxPlacementTest = () => {
       setError("No test code available. Please generate one first.");
       return;
     }
-
+  
     if (credits < 1) {
       setError("Insufficient credits. Please purchase more credits.");
       return;
     }
-
+  
     setProcessing(true);
     setError("");
-
+    setResults([]); // Clear previous results
+  
     try {
       await axios.post(
         "http://localhost:3000/check-mails",
         { testCode },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
-
+  
       const token = localStorage.getItem("token");
       const eventSource = new EventSource(
         `http://localhost:3000/results-stream/${testCode}?token=${token}`
       );
-
+  
       eventSource.onmessage = (event) => {
         const { email, status } = JSON.parse(event.data);
-
+        console.log(`Received update for ${email}: ${status}`); // Debug log
+  
         setResults((prevResults) => {
-          const existingResult = prevResults.find((result) => result.email === email);
-          if (existingResult) {
-            return prevResults.map((result) =>
-              result.email === email ? { ...result, status } : result
-            );
+          // Check if we already have this result
+          const existingIndex = prevResults.findIndex(
+            (result) => result.email.toLowerCase() === email.toLowerCase()
+          );
+  
+          if (existingIndex >= 0) {
+            // Update existing result
+            const newResults = [...prevResults];
+            newResults[existingIndex] = { email, status };
+            return newResults;
           } else {
+            // Add new result
             return [...prevResults, { email, status }];
           }
         });
-
-        if (email === "tmm003937@gmail.com" && (status === "Inbox" || status === "Spam")) {
+  
+        // Enable analysis when tmm003937@gmail.com has a result
+        if (email.toLowerCase() === "tmm003937@gmail.com" && (status === "Inbox" || status === "Spam")) {
           setAnalysisReady(true);
-        } else if (email === "tmm003937@gmail.com" && status === "Not Found") {
-          setAnalysisReady(false);
         }
       };
-
-      eventSource.onerror = () => {
+  
+      eventSource.onerror = (error) => {
+        console.error("SSE error:", error);
         eventSource.close();
         setProcessing(false);
       };
+  
+      // Close connection after 5 minutes
+      setTimeout(() => {
+        eventSource.close();
+        setProcessing(false);
+      }, 300000);
+  
     } catch (err) {
+      console.error("Error in handleGetResults:", err);
       setError("Failed to fetch results. Please try again.");
+      setProcessing(false);
     }
   };
 
@@ -372,19 +390,79 @@ const InboxPlacementTest = () => {
       <thead>
         <tr>
           <th>Email</th>
+          <th>ESP</th>
           <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        {recipients.split(",").map((email, index) => {
-          const result = results.find((result) => result.email === email.trim());
-          return (
-            <tr key={index}>
-              <td>{email.trim()}</td>
-              <td>{result ? result.status : "Processing..."}</td>
-            </tr>
-          );
-        })}
+        {recipients
+          .split(",")
+          .map(email => email.trim())
+          .filter(email => email)
+          .map((email, index) => {
+            // Find any result that matches this email (case insensitive)
+            const result = results.find((result) => 
+              result.email.toLowerCase() === email.toLowerCase()
+            );
+
+            // Determine ESP type
+            const getESP = (email) => {
+              if (email.includes('@gmail.com')) {
+                // Check if it's a pro-gmail account
+                const proGmails = [
+                  'Patricia@emaildeliveryreport.com',
+                  'l.Patricia@emaildeliveryreport.net',
+                  'lindaPatricia@xemaildeliveryreport.com',
+                  'Linda@xemaildeliveryreport.com',
+                  'linda.patricia@xemaildeliveryreport.com'
+                ];
+                return proGmails.includes(email) ? 'pro-gmail' : 'gmail';
+              }
+              // Check if it's a pro-outlook account
+              const proOutlooks = [
+                'brijesh@xleadoutreach.com',
+                'mahendra@xleadsconsulting.com',
+                'lakhendra@xleadsconsulting.com',
+                'xgrowthtech@xleadsconsulting.com',
+                'audit@xleadoutreach.com'
+              ];
+              return proOutlooks.includes(email) ? 'pro-outlook' : 'pro-gmail';
+            };
+
+            const esp = getESP(email);
+            
+            return (
+              <tr key={index}>
+                <td>{email}</td>
+                <td>
+                  <span style={{
+                    padding: '3px 6px',
+                    borderRadius: '3px',
+                    backgroundColor: 
+                      esp === 'pro-gmail' ? '#e3f2fd' :
+                      esp === 'pro-outlook' ? '#e8f5e9' :
+                      '#fff8e1',
+                    color: '#000',
+                    fontWeight: 'bold'
+                  }}>
+                    {esp}
+                  </span>
+                </td>
+                <td>
+                  {result ? (
+                    <>
+                      {result.status === "Inbox" && "✅ Inbox"}
+                      {result.status === "Spam" && "⚠️ Spam"}
+                      {result.status === "Not Found" && "❌ Not Found"}
+                      {result.status === "Error" && "❓ Error"}
+                    </>
+                  ) : (
+                    "Processing..."
+                  )}
+                </td>
+              </tr>
+            );
+          })}
       </tbody>
     </table>
   </div>
