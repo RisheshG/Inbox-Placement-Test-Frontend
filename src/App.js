@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import axios from "axios";
-import InboxPlacementTest from "./InboxPlacementTest"; // Import the Inbox Placement Test component
+import InboxPlacementTest from "./InboxPlacementTest.js"; // Import the Inbox Placement Test component
 import PreviousResults from "./PreviousResults"; // Import the Previous Results component
 
 const App = () => {
