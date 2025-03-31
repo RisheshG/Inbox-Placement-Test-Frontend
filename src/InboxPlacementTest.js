@@ -15,7 +15,6 @@ const InboxPlacementTest = () => {
   const [emailAnalysis, setEmailAnalysis] = useState(null);
   const [analyzingEmail, setAnalyzingEmail] = useState(false);
   const [analysisReady, setAnalysisReady] = useState(false);
-
   const recipients = `
   Patricia@emaildeliveryreport.com,
   l.Patricia@emaildeliveryreport.net,
@@ -43,7 +42,7 @@ const InboxPlacementTest = () => {
 
   const validateToken = async (token) => {
     try {
-      const response = await axios.get("https://inbox-placement-test-backend.onrender.com/user", {
+      const response = await axios.get("http://localhost:3000/user", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(response.data.email);
@@ -65,7 +64,7 @@ const InboxPlacementTest = () => {
 
   const handleRegister = async (email, password) => {
     try {
-      const response = await axios.post("https://inbox-placement-test-backend.onrender.com/register", {
+      const response = await axios.post("http://localhost:3000/register", {
         email,
         password,
       });
@@ -78,7 +77,7 @@ const InboxPlacementTest = () => {
 
   const handleLogin = async (email, password) => {
     try {
-      const response = await axios.post("https://inbox-placement-test-backend.onrender.com/login", {
+      const response = await axios.post("http://localhost:3000/login", {
         email,
         password,
       });
@@ -110,7 +109,7 @@ const InboxPlacementTest = () => {
 
     try {
       const response = await axios.post(
-        "https://inbox-placement-test-backend.onrender.com/generate-test-code",
+        "http://localhost:3000/generate-test-code",
         { recipients },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -124,100 +123,77 @@ const InboxPlacementTest = () => {
   };
 
   const handleGetResults = async () => {
-  if (!testCode) {
-    setError("No test code available. Please generate one first.");
-    return;
-  }
-
-  if (credits < 1) {
-    setError("Insufficient credits. Please purchase more credits.");
-    return;
-  }
-
-  setProcessing(true);
-  setError("");
-  setResults([]);
-
-  try {
-    // First initiate the check
-    await axios.post(
-      "https://inbox-placement-test-backend.onrender.com/check-mails",
-      { testCode },
-      { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-    );
-
-    // Then set up SSE connection
-    const token = localStorage.getItem("token");
-    const eventSource = new EventSource(
-      `https://inbox-placement-test-backend.onrender.com/results-stream/${testCode}?token=${token}`
-    );
-
-    // Handle incoming messages
-    eventSource.onmessage = (event) => {
-      if (event.data === ': ping') return; // Ignore ping messages
-      
-      try {
+    if (!testCode) {
+      setError("No test code available. Please generate one first.");
+      return;
+    }
+  
+    if (credits < 1) {
+      setError("Insufficient credits. Please purchase more credits.");
+      return;
+    }
+  
+    setProcessing(true);
+    setError("");
+    setResults([]); // Clear previous results
+  
+    try {
+      await axios.post(
+        "http://localhost:3000/check-mails",
+        { testCode },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+  
+      const token = localStorage.getItem("token");
+      const eventSource = new EventSource(
+        `http://localhost:3000/results-stream/${testCode}?token=${token}`
+      );
+  
+      eventSource.onmessage = (event) => {
         const { email, status } = JSON.parse(event.data);
-        
-        setResults(prevResults => {
+        console.log(`Received update for ${email}: ${status}`); // Debug log
+  
+        setResults((prevResults) => {
+          // Check if we already have this result
           const existingIndex = prevResults.findIndex(
-            r => r.email.toLowerCase() === email.toLowerCase()
+            (result) => result.email.toLowerCase() === email.toLowerCase()
           );
-          
+  
           if (existingIndex >= 0) {
+            // Update existing result
             const newResults = [...prevResults];
             newResults[existingIndex] = { email, status };
             return newResults;
+          } else {
+            // Add new result
+            return [...prevResults, { email, status }];
           }
-          return [...prevResults, { email, status }];
         });
-
-        // Enable analysis when specific email has a result
+  
+        // Enable analysis when tmm003937@gmail.com has a result
         if (email.toLowerCase() === "tmm003937@gmail.com" && (status === "Inbox" || status === "Spam")) {
           setAnalysisReady(true);
         }
-      } catch (e) {
-        console.error("Error parsing SSE data:", e);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error("SSE error:", error);
-      if (eventSource.readyState === EventSource.CLOSED) {
-        console.log("Connection was closed");
-      }
-      // Implement reconnection logic
-      eventSource.close();
-      setTimeout(() => handleGetResults(), 5000); // Reconnect after 5 seconds
-    };
-
-    // Store eventSource in state to close it later
-    setEventSource(eventSource);
-
-    // Close connection after 5 minutes
-    setTimeout(() => {
-      eventSource.close();
+      };
+  
+      eventSource.onerror = (error) => {
+        console.error("SSE error:", error);
+        eventSource.close();
+        setProcessing(false);
+      };
+  
+      // Close connection after 5 minutes
+      setTimeout(() => {
+        eventSource.close();
+        setProcessing(false);
+      }, 300000);
+  
+    } catch (err) {
+      console.error("Error in handleGetResults:", err);
+      setError("Failed to fetch results. Please try again.");
       setProcessing(false);
-    }, 300000);
-
-  } catch (err) {
-    console.error("Error in handleGetResults:", err);
-    setError("Failed to fetch results. Please try again.");
-    setProcessing(false);
-  }
-};
-
-// Add to your component's state
-const [eventSource, setEventSource] = useState(null);
-
-// Clean up event source on unmount
-useEffect(() => {
-  return () => {
-    if (eventSource) {
-      eventSource.close();
     }
   };
-}, [eventSource]);
 
   const handleAnalyzeEmail = async () => {
     if (!testCode) {
@@ -230,7 +206,7 @@ useEffect(() => {
 
     try {
       const response = await axios.get(
-        `https://inbox-placement-test-backend.onrender.com/get-latest-analysis/${testCode}`,
+        `http://localhost:3000/get-latest-analysis/${testCode}`,
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
 
