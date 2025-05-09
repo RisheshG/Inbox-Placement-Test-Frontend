@@ -42,7 +42,7 @@ const InboxPlacementTest = () => {
 
   const validateToken = async (token) => {
     try {
-      const response = await axios.get("http://localhost:3000/user", {
+      const response = await axios.get("https://inbox-placement-test-backend.onrender.com/user", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(response.data.email);
@@ -64,7 +64,7 @@ const InboxPlacementTest = () => {
 
   const handleRegister = async (email, password) => {
     try {
-      const response = await axios.post("http://localhost:3000/register", {
+      const response = await axios.post("https://inbox-placement-test-backend.onrender.com/register", {
         email,
         password,
       });
@@ -77,7 +77,7 @@ const InboxPlacementTest = () => {
 
   const handleLogin = async (email, password) => {
     try {
-      const response = await axios.post("http://localhost:3000/login", {
+      const response = await axios.post("https://inbox-placement-test-backend.onrender.com/login", {
         email,
         password,
       });
@@ -109,7 +109,7 @@ const InboxPlacementTest = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:3000/generate-test-code",
+        "https://inbox-placement-test-backend.onrender.com/generate-test-code",
         { recipients },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
@@ -139,14 +139,14 @@ const InboxPlacementTest = () => {
   
     try {
       await axios.post(
-        "http://localhost:3000/check-mails",
+        "https://inbox-placement-test-backend.onrender.com/check-mails",
         { testCode },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
   
       const token = localStorage.getItem("token");
       const eventSource = new EventSource(
-        `http://localhost:3000/results-stream/${testCode}?token=${token}`
+        `https://inbox-placement-test-backend.onrender.com/results-stream/${testCode}?token=${token}`
       );
   
       eventSource.onmessage = (event) => {
@@ -206,7 +206,7 @@ const InboxPlacementTest = () => {
 
     try {
       const response = await axios.get(
-        `http://localhost:3000/get-latest-analysis/${testCode}`,
+        `https://inbox-placement-test-backend.onrender.com/get-latest-analysis/${testCode}`,
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
 
