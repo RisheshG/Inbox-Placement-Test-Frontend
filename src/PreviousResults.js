@@ -21,7 +21,7 @@ const PreviousResults = () => {
 
     try {
       const response = await axios.get(
-        "http://localhost:3000/get-previous-tests",
+        "https://inbox-placement-test-backend.onrender.com/get-previous-tests",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
